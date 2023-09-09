@@ -13,7 +13,7 @@ namespace DotNet.Testcontainers.Images
   {
     private static readonly ISearchAndReplace<string>[] PrepareRegex = { default(EscapeRegex), default(PrepareRecursiveWildcards), default(PrepareNonRecursiveWildcards), default(PrepareZeroOrOneQuantifier) };
 
-    private readonly IEnumerable<KeyValuePair<Regex, bool>> ignorePatterns;
+    private readonly IEnumerable<KeyValuePair<Regex, bool>> _ignorePatterns;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="IgnoreFile" /> class.
@@ -23,7 +23,7 @@ namespace DotNet.Testcontainers.Images
     /// <param name="logger">The logger.</param>
     public IgnoreFile(IEnumerable<string> patterns, ILogger logger)
     {
-      this.ignorePatterns = patterns
+      _ignorePatterns = patterns
         .AsParallel()
 
         // Keep the order.
@@ -54,7 +54,7 @@ namespace DotNet.Testcontainers.Images
         // Check if the pattern contains an optional prefix ("!"), which negates the pattern.
         .Aggregate(new List<KeyValuePair<string, bool>>(), (lines, line) =>
         {
-          switch (line.First())
+          switch (line[0])
           {
             case '!':
               lines.Add(new KeyValuePair<string, bool>(line.Substring(1), true));
@@ -96,16 +96,16 @@ namespace DotNet.Testcontainers.Images
           return new KeyValuePair<string, bool>(key, value);
         })
 
-        // Compile and cache regular expression to increase the performance.
+        // Cache regular expression to increase the performance.
         .Select(ignorePattern =>
         {
           var key = ignorePattern.Key;
           var value = ignorePattern.Value;
-          return new KeyValuePair<Regex, bool>(new Regex(key, RegexOptions.Compiled), value);
+          return new KeyValuePair<Regex, bool>(new Regex(key, RegexOptions.None, TimeSpan.FromSeconds(1)), value);
         })
         .ToArray();
 
-      foreach (var ignorePattern in this.ignorePatterns)
+      foreach (var ignorePattern in _ignorePatterns)
       {
         logger.IgnorePatternAdded(ignorePattern.Key);
       }
@@ -132,8 +132,8 @@ namespace DotNet.Testcontainers.Images
     /// <returns>True if the file path does not match any ignore pattern, otherwise false.</returns>
     public bool Accepts(string file)
     {
-      var matches = this.ignorePatterns.AsParallel().Where(ignorePattern => ignorePattern.Key.IsMatch(file)).ToArray();
-      return !matches.Any() || matches.Last().Value;
+      var matches = _ignorePatterns.AsParallel().Where(ignorePattern => ignorePattern.Key.IsMatch(file)).ToArray();
+      return !matches.Any() || matches[matches.Length - 1].Value;
     }
 
     /// <summary>
@@ -143,7 +143,7 @@ namespace DotNet.Testcontainers.Images
     /// <returns>True if the file path matches any ignore pattern, otherwise false.</returns>
     public bool Denies(string file)
     {
-      return !this.Accepts(file);
+      return !Accepts(file);
     }
 
     /// <summary>
@@ -151,7 +151,7 @@ namespace DotNet.Testcontainers.Images
     /// </summary>
     private readonly struct EscapeRegex : ISearchAndReplace<string>
     {
-      private static readonly Regex Pattern = new Regex("[\\-\\[\\]\\/\\{\\}\\(\\)\\+\\?\\.\\\\\\^\\$\\|]", RegexOptions.Compiled);
+      private static readonly Regex Pattern = new Regex("[\\-\\[\\]\\/\\{\\}\\(\\)\\+\\?\\.\\\\\\^\\$\\|]", RegexOptions.None, TimeSpan.FromSeconds(1));
 
       /// <inheritdoc />
       public string Replace(string input)

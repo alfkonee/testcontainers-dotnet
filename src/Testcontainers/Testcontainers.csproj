@@ -3,17 +3,19 @@
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
     <Configurations>Debug;Release</Configurations>
-    <Platforms>AnyCPU</Platforms>
     <RootNamespace>DotNet.Testcontainers</RootNamespace>
     <LangVersion>10</LangVersion>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="JetBrains.Annotations" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" VersionOverride="1.1.1" PrivateAssets="All" />
+    <PackageReference Include="JetBrains.Annotations" VersionOverride="2022.3.1" PrivateAssets="All" />
     <PackageReference Include="Docker.DotNet" />
     <PackageReference Include="Docker.DotNet.X509" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
-    <PackageReference Include="Portable.BouncyCastle" />
+    <PackageReference Include="BouncyCastle.Cryptography" />
     <PackageReference Include="SharpZipLib" />
+    <PackageReference Include="SSH.NET" />
     <PackageReference Include="System.Text.Json" />
   </ItemGroup>
 </Project>

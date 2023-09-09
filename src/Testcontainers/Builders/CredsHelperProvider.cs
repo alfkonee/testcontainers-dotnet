@@ -1,6 +1,5 @@
-﻿namespace DotNet.Testcontainers.Builders
+namespace DotNet.Testcontainers.Builders
 {
-  using System;
   using System.Linq;
   using System.Text.Json;
   using DotNet.Testcontainers.Configurations;
@@ -10,9 +9,9 @@
   /// <inheritdoc cref="IDockerEndpointAuthenticationProvider" />
   internal sealed class CredsHelperProvider : IDockerRegistryAuthenticationProvider
   {
-    private readonly JsonElement rootElement;
+    private readonly JsonElement _rootElement;
 
-    private readonly ILogger logger;
+    private readonly ILogger _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CredsHelperProvider" /> class.
@@ -33,35 +32,27 @@
     [PublicAPI]
     public CredsHelperProvider(JsonElement jsonElement, ILogger logger)
     {
-      this.rootElement = jsonElement.TryGetProperty("credHelpers", out var credHelpers) ? credHelpers : default;
-      this.logger = logger;
+      _rootElement = jsonElement.TryGetProperty("credHelpers", out var credHelpers) ? credHelpers : default;
+      _logger = logger;
     }
 
     /// <inheritdoc />
     public bool IsApplicable(string hostname)
     {
-#if NETSTANDARD2_1_OR_GREATER
-      return !default(JsonElement).Equals(this.rootElement) && !JsonValueKind.Null.Equals(this.rootElement.ValueKind) && this.rootElement.EnumerateObject().Any(property => property.Name.Contains(hostname, StringComparison.OrdinalIgnoreCase));
-#else
-      return !default(JsonElement).Equals(this.rootElement) && !JsonValueKind.Null.Equals(this.rootElement.ValueKind) && this.rootElement.EnumerateObject().Any(property => property.Name.IndexOf(hostname, StringComparison.OrdinalIgnoreCase) >= 0);
-#endif
+      return !default(JsonElement).Equals(_rootElement) && !JsonValueKind.Null.Equals(_rootElement.ValueKind) && _rootElement.EnumerateObject().Any(property => Base64Provider.HasDockerRegistryKey(property, hostname));
     }
 
     /// <inheritdoc />
     public IDockerRegistryAuthenticationConfiguration GetAuthConfig(string hostname)
     {
-      this.logger.SearchingDockerRegistryCredential("CredHelpers");
+      _logger.SearchingDockerRegistryCredential("CredHelpers");
 
-      if (!this.IsApplicable(hostname))
+      if (!IsApplicable(hostname))
       {
         return null;
       }
 
-#if NETSTANDARD2_1_OR_GREATER
-      var registryEndpointProperty = this.rootElement.EnumerateObject().LastOrDefault(property => property.Name.Contains(hostname, StringComparison.OrdinalIgnoreCase));
-#else
-      var registryEndpointProperty = this.rootElement.EnumerateObject().LastOrDefault(property => property.Name.IndexOf(hostname, StringComparison.OrdinalIgnoreCase) >= 0);
-#endif
+      var registryEndpointProperty = _rootElement.EnumerateObject().LastOrDefault(property => Base64Provider.HasDockerRegistryKey(property, hostname));
 
       if (!JsonValueKind.String.Equals(registryEndpointProperty.Value.ValueKind))
       {
@@ -90,7 +81,7 @@
         return null;
       }
 
-      this.logger.DockerRegistryCredentialFound(hostname);
+      _logger.DockerRegistryCredentialFound(hostname);
       return new DockerRegistryAuthenticationConfiguration(hostname, credential);
     }
   }

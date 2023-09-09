@@ -1,21 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project>
   <PropertyGroup>
-    <SolutionDir Condition=" '$(SolutionDir)' == '' ">$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildProjectDirectory), Testcontainers.sln))/</SolutionDir>
-    <BuildDir>$(SolutionDir)build/</BuildDir>
-    <BaseIntermediateOutputPath>$(BuildDir)obj/$(MSBuildProjectName)</BaseIntermediateOutputPath>
-    <IntermediateOutputPath>$(BaseIntermediateOutputPath)</IntermediateOutputPath>
-    <MSBuildProjectExtensionsPath>$(BaseIntermediateOutputPath)</MSBuildProjectExtensionsPath>
-    <OutputPath>$(BuildDir)bin/$(Platform)/$(Configuration)/$(TargetFramework)</OutputPath>
-    <OutDir>$(OutputPath)/</OutDir>
+    <SolutionDir Condition=" '$(SolutionDir)' == '' ">$([MSBuild]::GetDirectoryNameOfFileAbove('$(MSBuildProjectDirectory)', 'Testcontainers.sln'))/</SolutionDir>
   </PropertyGroup>
   <PropertyGroup>
     <PackageId>$(AssemblyName)</PackageId>
-    <Version>2.3.0</Version>
+    <Version>3.5.0</Version>
     <AssemblyVersion>$(Version)</AssemblyVersion>
     <FileVersion>$(Version)</FileVersion>
     <Product>Testcontainers</Product>
-    <Copyright>Copyright (c) 2019 - 2022 Andre Hofmeister and other authors</Copyright>
+    <Copyright>Copyright (c) 2019 - 2023 Andre Hofmeister and other authors</Copyright>
     <Authors>Andre Hofmeister and contributors</Authors>
     <Company>Andre Hofmeister</Company>
     <Description>Testcontainers for .NET is a library to support tests with throwaway instances of Docker containers for all compatible .NET Standard versions.</Description>
@@ -29,12 +23,16 @@
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/testcontainers/testcontainers-dotnet</RepositoryUrl>
   </PropertyGroup>
+  <PropertyGroup>
+    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)src/strongname.snk</AssemblyOriginatorKeyFile>
+    <SignAssembly>true</SignAssembly>
+  </PropertyGroup>
+  <PropertyGroup>
+    <NoWarn>CS0618,CS1591,SA0001,SA1600,SA1633,SA1649</NoWarn>
+  </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-  </PropertyGroup>
-  <PropertyGroup>
-    <NoWarn>CA1716,CS1591,SA0001,SA1600,SA1633</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <None Include="$(SolutionDir)docs/banner.png" Visible="false" Pack="true" PackagePath="docs/" />
@@ -44,7 +42,7 @@
   </ItemGroup>
   <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
-      <_Parameter1>Testcontainers.Tests</_Parameter1>
+      <_Parameter1>Testcontainers.Tests, PublicKey=$([System.IO.File]::ReadAllText($(MSBuildThisFileDirectory)src/strongname.pub))</_Parameter1>
     </AssemblyAttribute>
   </ItemGroup>
 </Project>

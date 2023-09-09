@@ -7,8 +7,10 @@ namespace DotNet.Testcontainers.Clients
 
   internal interface IDockerNetworkOperations : IHasListOperations<NetworkResponse>
   {
-    Task<string> CreateAsync(ITestcontainersNetworkConfiguration configuration, CancellationToken ct = default);
+    Task<string> CreateAsync(INetworkConfiguration configuration, CancellationToken ct = default);
 
     Task DeleteAsync(string id, CancellationToken ct = default);
+
+    Task ConnectAsync(string networkId, string containerId, CancellationToken ct = default);
   }
 }

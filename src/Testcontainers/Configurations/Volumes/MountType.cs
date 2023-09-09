@@ -27,12 +27,18 @@ namespace DotNet.Testcontainers.Configurations
     public static readonly MountType Tmpfs = new MountType("tmpfs");
 
     /// <summary>
+    /// The 'npipe' mount type.
+    /// </summary>
+    [PublicAPI]
+    public static readonly MountType NamedPipe = new MountType("npipe");
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="MountType" /> struct.
     /// </summary>
     /// <param name="type">The mount type.</param>
     private MountType(string type)
     {
-      this.Type = type;
+      Type = type;
     }
 
     /// <summary>

@@ -1,4 +1,4 @@
-namespace DotNet.Testcontainers.Tests.Unit.Configurations
+namespace DotNet.Testcontainers.Tests.Unit
 {
   using System.Threading.Tasks;
   using DotNet.Testcontainers.Builders;
@@ -9,19 +9,19 @@ namespace DotNet.Testcontainers.Tests.Unit.Configurations
 
   public sealed class WaitUntilContainerIsHealthyTest : IClassFixture<HealthCheckFixture>
   {
-    private readonly IDockerImage image;
+    private readonly IImage _image;
 
     public WaitUntilContainerIsHealthyTest(HealthCheckFixture image)
     {
-      this.image = image;
+      _image = image;
     }
 
     [Fact]
     public async Task ContainerHealthCheckShouldBeHealthy()
     {
       // Given
-      var container = new TestcontainersBuilder<TestcontainersContainer>()
-        .WithImage(this.image)
+      var container = new ContainerBuilder()
+        .WithImage(_image)
         .WithEnvironment("START_HEALTHY", bool.TrueString.ToLowerInvariant())
         .WithWaitStrategy(Wait.ForUnixContainer().UntilContainerIsHealthy(10))
         .Build();
@@ -38,8 +38,8 @@ namespace DotNet.Testcontainers.Tests.Unit.Configurations
     public async Task ContainerHealthCheckShouldBeUnhealthy()
     {
       // Given
-      var container = new TestcontainersBuilder<TestcontainersContainer>()
-        .WithImage(this.image)
+      var container = new ContainerBuilder()
+        .WithImage(_image)
         .WithEnvironment("START_HEALTHY", bool.FalseString.ToLowerInvariant())
         .WithWaitStrategy(Wait.ForUnixContainer().UntilContainerIsHealthy(10))
         .Build();

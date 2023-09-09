@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net.Http;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
@@ -6,6 +6,7 @@ using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 using DotNet.Testcontainers.Networks;
 using JetBrains.Annotations;
+using Testcontainers.SqlEdge;
 using Xunit;
 
 namespace WeatherForecast.Tests;
@@ -15,13 +16,13 @@ public sealed class WeatherForecastContainer : HttpClient, IAsyncLifetime
 {
   private static readonly X509Certificate Certificate = new X509Certificate2(WeatherForecastImage.CertificateFilePath, WeatherForecastImage.CertificatePassword);
 
-  private static readonly WeatherForecastImage Image = new();
+  private static readonly WeatherForecastImage Image = new WeatherForecastImage();
 
-  private readonly IDockerNetwork _weatherForecastNetwork;
+  private readonly INetwork _weatherForecastNetwork;
 
-  private readonly IDockerContainer _mssqlContainer;
+  private readonly IContainer _sqlEdgeContainer;
 
-  private readonly IDockerContainer _weatherForecastContainer;
+  private readonly IContainer _weatherForecastContainer;
 
   public WeatherForecastContainer()
     : base(new HttpClientHandler
@@ -32,21 +33,17 @@ public sealed class WeatherForecastContainer : HttpClient, IAsyncLifetime
   {
     const string weatherForecastStorage = "weatherForecastStorage";
 
-    var mssqlConfiguration = new DatabaseContainerConfiguration();
+    const string connectionString = $"server={weatherForecastStorage};user id={SqlEdgeBuilder.DefaultUsername};password={SqlEdgeBuilder.DefaultPassword};database={SqlEdgeBuilder.DefaultDatabase}";
 
-    var connectionString = $"server={weatherForecastStorage};user id=sa;password={mssqlConfiguration.Password};database={mssqlConfiguration.Database}";
-
-    _weatherForecastNetwork = new TestcontainersNetworkBuilder()
-      .WithName(Guid.NewGuid().ToString("D"))
+    _weatherForecastNetwork = new NetworkBuilder()
       .Build();
 
-    _mssqlContainer = new TestcontainersBuilder<MsSqlTestcontainer>()
-      .WithDatabase(mssqlConfiguration)
+    _sqlEdgeContainer = new SqlEdgeBuilder()
       .WithNetwork(_weatherForecastNetwork)
       .WithNetworkAliases(weatherForecastStorage)
       .Build();
 
-    _weatherForecastContainer = new TestcontainersBuilder<TestcontainersContainer>()
+    _weatherForecastContainer = new ContainerBuilder()
       .WithImage(Image)
       .WithNetwork(_weatherForecastNetwork)
       .WithPortBinding(WeatherForecastImage.HttpsPort, true)
@@ -60,14 +57,13 @@ public sealed class WeatherForecastContainer : HttpClient, IAsyncLifetime
 
   public async Task InitializeAsync()
   {
-    // It is not necessary to clean up resources immediately (still good practice). The Resource Reaper will take care of orphaned resources.
     await Image.InitializeAsync()
       .ConfigureAwait(false);
 
     await _weatherForecastNetwork.CreateAsync()
       .ConfigureAwait(false);
 
-    await _mssqlContainer.StartAsync()
+    await _sqlEdgeContainer.StartAsync()
       .ConfigureAwait(false);
 
     await _weatherForecastContainer.StartAsync()
@@ -76,13 +72,14 @@ public sealed class WeatherForecastContainer : HttpClient, IAsyncLifetime
 
   public async Task DisposeAsync()
   {
+    // It is not necessary to clean up resources immediately (still good practice). The Resource Reaper will take care of orphaned resources.
     await Image.DisposeAsync()
       .ConfigureAwait(false);
 
     await _weatherForecastContainer.DisposeAsync()
       .ConfigureAwait(false);
 
-    await _mssqlContainer.DisposeAsync()
+    await _sqlEdgeContainer.DisposeAsync()
       .ConfigureAwait(false);
 
     await _weatherForecastNetwork.DeleteAsync()

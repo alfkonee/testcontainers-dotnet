@@ -80,12 +80,19 @@ namespace DotNet.Testcontainers.Configurations
     bool GetRyukDisabled();
 
     /// <summary>
+    /// Gets the Ryuk container privileged custom configuration.
+    /// </summary>
+    /// <returns>The Ryuk container privileged custom configuration.</returns>
+    /// <remarks>https://dotnet.testcontainers.org/custom_configuration/.</remarks>
+    bool GetRyukContainerPrivileged();
+
+    /// <summary>
     /// Gets the Ryuk container image custom configuration.
     /// </summary>
     /// <returns>The Ryuk container image custom configuration.</returns>
     /// <remarks>https://dotnet.testcontainers.org/custom_configuration/.</remarks>
     [CanBeNull]
-    IDockerImage GetRyukContainerImage();
+    IImage GetRyukContainerImage();
 
     /// <summary>
     /// Gets the Docker Hub image name prefix custom configuration.

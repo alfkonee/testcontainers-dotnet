@@ -3,30 +3,29 @@ namespace DotNet.Testcontainers.Configurations
   using System;
   using System.Threading.Tasks;
   using DotNet.Testcontainers.Containers;
-  using Microsoft.Extensions.Logging;
 
   internal class UntilContainerIsHealthy : IWaitUntil
   {
-    private readonly long failingStreak;
+    private readonly long _failingStreak;
 
     public UntilContainerIsHealthy(long failingStreak)
     {
-      this.failingStreak = failingStreak;
+      _failingStreak = failingStreak;
     }
 
-    public Task<bool> Until(ITestcontainersContainer testcontainers, ILogger logger)
+    public Task<bool> UntilAsync(IContainer container)
     {
-      if (TestcontainersStates.Exited.Equals(testcontainers.State))
+      if (TestcontainersStates.Exited.Equals(container.State))
       {
         throw new TimeoutException("Container has exited.");
       }
 
-      if (this.failingStreak < testcontainers.HealthCheckFailingStreak)
+      if (_failingStreak < container.HealthCheckFailingStreak)
       {
-        throw new TimeoutException($"Number of failed operations exceeded max count ({this.failingStreak}).");
+        throw new TimeoutException($"Number of failed operations exceeded max count ({_failingStreak}).");
       }
 
-      return Task.FromResult(TestcontainersHealthStatus.Healthy.Equals(testcontainers.Health));
+      return Task.FromResult(TestcontainersHealthStatus.Healthy.Equals(container.Health));
     }
   }
 }

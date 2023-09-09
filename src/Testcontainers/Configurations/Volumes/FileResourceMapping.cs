@@ -12,12 +12,14 @@ namespace DotNet.Testcontainers.Configurations
     /// </summary>
     /// <param name="hostPath">The absolute path of a file to map on the host system.</param>
     /// <param name="containerPath">The absolute path of a file to map in the container.</param>
-    public FileResourceMapping(string hostPath, string containerPath)
+    /// <param name="fileMode">The POSIX file mode permission.</param>
+    public FileResourceMapping(string hostPath, string containerPath, UnixFileModes fileMode)
     {
-      this.Type = MountType.Bind;
-      this.Source = hostPath;
-      this.Target = containerPath;
-      this.AccessMode = AccessMode.ReadOnly;
+      Type = MountType.Bind;
+      Source = hostPath;
+      Target = containerPath;
+      FileMode = fileMode;
+      AccessMode = AccessMode.ReadOnly;
     }
 
     /// <inheritdoc />
@@ -33,9 +35,24 @@ namespace DotNet.Testcontainers.Configurations
     public string Target { get; }
 
     /// <inheritdoc />
+    public UnixFileModes FileMode { get; }
+
+    /// <inheritdoc />
+    public Task CreateAsync(CancellationToken ct = default)
+    {
+      return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public Task DeleteAsync(CancellationToken ct = default)
+    {
+      return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
     public virtual Task<byte[]> GetAllBytesAsync(CancellationToken ct = default)
     {
-      return Task.FromResult(File.ReadAllBytes(this.Source));
+      return Task.FromResult(File.ReadAllBytes(Source));
     }
   }
 }

@@ -1,4 +1,4 @@
-﻿namespace DotNet.Testcontainers.Builders
+namespace DotNet.Testcontainers.Builders
 {
   using System;
   using System.Linq;
@@ -11,9 +11,9 @@
   /// <inheritdoc cref="IDockerEndpointAuthenticationProvider" />
   internal sealed class Base64Provider : IDockerRegistryAuthenticationProvider
   {
-    private readonly JsonElement rootElement;
+    private readonly JsonElement _rootElement;
 
-    private readonly ILogger logger;
+    private readonly ILogger _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Base64Provider" /> class.
@@ -34,35 +34,33 @@
     [PublicAPI]
     public Base64Provider(JsonElement jsonElement, ILogger logger)
     {
-      this.rootElement = jsonElement.TryGetProperty("auths", out var auths) ? auths : default;
-      this.logger = logger;
+      _rootElement = jsonElement.TryGetProperty("auths", out var auths) ? auths : default;
+      _logger = logger;
     }
+
+    /// <summary>
+    /// Gets a predicate that determines whether or not a <see cref="JsonProperty" /> contains a Docker registry key.
+    /// </summary>
+    public static Func<JsonProperty, string, bool> HasDockerRegistryKey { get; }
+      = (property, hostname) => property.Name.Equals(hostname, StringComparison.OrdinalIgnoreCase) || property.Name.EndsWith("://" + hostname, StringComparison.OrdinalIgnoreCase);
 
     /// <inheritdoc />
     public bool IsApplicable(string hostname)
     {
-#if NETSTANDARD2_1_OR_GREATER
-      return !default(JsonElement).Equals(this.rootElement) && !JsonValueKind.Null.Equals(this.rootElement.ValueKind) && this.rootElement.EnumerateObject().Any(property => property.Name.Contains(hostname, StringComparison.OrdinalIgnoreCase));
-#else
-      return !default(JsonElement).Equals(this.rootElement) && !JsonValueKind.Null.Equals(this.rootElement.ValueKind) && this.rootElement.EnumerateObject().Any(property => property.Name.IndexOf(hostname, StringComparison.OrdinalIgnoreCase) >= 0);
-#endif
+      return !default(JsonElement).Equals(_rootElement) && !JsonValueKind.Null.Equals(_rootElement.ValueKind) && _rootElement.EnumerateObject().Any(property => HasDockerRegistryKey(property, hostname));
     }
 
     /// <inheritdoc />
     public IDockerRegistryAuthenticationConfiguration GetAuthConfig(string hostname)
     {
-      this.logger.SearchingDockerRegistryCredential("Auths");
+      _logger.SearchingDockerRegistryCredential("Auths");
 
-      if (!this.IsApplicable(hostname))
+      if (!IsApplicable(hostname))
       {
         return null;
       }
 
-#if NETSTANDARD2_1_OR_GREATER
-      var authProperty = this.rootElement.EnumerateObject().LastOrDefault(property => property.Name.Contains(hostname, StringComparison.OrdinalIgnoreCase));
-#else
-      var authProperty = this.rootElement.EnumerateObject().LastOrDefault(property => property.Name.IndexOf(hostname, StringComparison.OrdinalIgnoreCase) >= 0);
-#endif
+      var authProperty = _rootElement.EnumerateObject().LastOrDefault(property => HasDockerRegistryKey(property, hostname));
 
       if (JsonValueKind.Undefined.Equals(authProperty.Value.ValueKind))
       {
@@ -87,7 +85,7 @@
         return null;
       }
 
-      this.logger.DockerRegistryCredentialFound(hostname);
+      _logger.DockerRegistryCredentialFound(hostname);
       return new DockerRegistryAuthenticationConfiguration(authProperty.Name, credential[0], credential[1]);
     }
   }

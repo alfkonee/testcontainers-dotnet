@@ -2,6 +2,7 @@ namespace DotNet.Testcontainers.Tests.Unit
 {
   using System.Threading.Tasks;
   using DotNet.Testcontainers.Builders;
+  using DotNet.Testcontainers.Commons;
   using DotNet.Testcontainers.Containers;
   using DotNet.Testcontainers.Tests.Fixtures;
   using Xunit;
@@ -10,44 +11,47 @@ namespace DotNet.Testcontainers.Tests.Unit
   {
     private const string AliasSuffix = "-alias";
 
-    private readonly ITestcontainersContainer testcontainer1;
+    private readonly IContainer _container1;
 
-    private readonly ITestcontainersContainer testcontainer2;
+    private readonly IContainer _container2;
 
     public TestcontainersNetworkTest(NetworkFixture networkFixture)
     {
-      var testcontainersBuilder = new TestcontainersBuilder<TestcontainersContainer>()
-        .WithImage("alpine")
-        .WithEntrypoint(KeepTestcontainersUpAndRunning.Command)
-        .WithNetwork(networkFixture.Network.Id, networkFixture.Network.Name);
+      var containerBuilder = new ContainerBuilder()
+        .WithImage(CommonImages.Alpine)
+        .WithEntrypoint(CommonCommands.SleepInfinity)
+        .WithNetwork(networkFixture.Network.Name);
 
-      this.testcontainer1 = testcontainersBuilder
-        .WithHostname(nameof(this.testcontainer1))
-        .WithNetworkAliases(nameof(this.testcontainer1) + AliasSuffix)
+      _container1 = containerBuilder
+        .WithNetworkAliases(nameof(_container1) + AliasSuffix)
         .Build();
 
-      this.testcontainer2 = testcontainersBuilder
-        .WithHostname(nameof(this.testcontainer2))
-        .WithNetworkAliases(nameof(this.testcontainer2) + AliasSuffix)
+      _container2 = containerBuilder
+        .WithNetworkAliases(nameof(_container2) + AliasSuffix)
         .Build();
     }
 
     public Task InitializeAsync()
     {
-      return Task.WhenAll(this.testcontainer1.StartAsync(), this.testcontainer2.StartAsync());
+      return Task.WhenAll(_container1.StartAsync(), _container2.StartAsync());
     }
 
     public Task DisposeAsync()
     {
-      return Task.WhenAll(this.testcontainer1.DisposeAsync().AsTask(), this.testcontainer2.DisposeAsync().AsTask());
+      return Task.WhenAll(_container1.DisposeAsync().AsTask(), _container2.DisposeAsync().AsTask());
     }
 
-    [Theory]
-    [InlineData(nameof(testcontainer2))]
-    [InlineData(nameof(testcontainer2) + AliasSuffix)]
-    public async Task PingContainer(string destination)
+    [Fact]
+    public async Task PingContainer()
     {
-      var execResult = await this.testcontainer1.ExecAsync(new[] { "ping", "-c", "4", destination });
+      // Given
+      const string destination = nameof(_container2) + AliasSuffix;
+
+      // When
+      var execResult = await _container1.ExecAsync(new[] { "ping", "-c", "1", destination })
+        .ConfigureAwait(false);
+
+      // Then
       Assert.Equal(0, execResult.ExitCode);
     }
   }

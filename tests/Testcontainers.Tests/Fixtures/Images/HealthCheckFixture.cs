@@ -1,45 +1,40 @@
-﻿namespace DotNet.Testcontainers.Tests.Fixtures
+namespace DotNet.Testcontainers.Tests.Fixtures
 {
-  using System;
-  using System.Globalization;
   using System.IO;
   using System.Threading.Tasks;
   using DotNet.Testcontainers.Builders;
-  using DotNet.Testcontainers.Containers;
   using DotNet.Testcontainers.Images;
   using JetBrains.Annotations;
   using Xunit;
 
   [UsedImplicitly]
-  public sealed class HealthCheckFixture : IDockerImage, IAsyncLifetime
+  public sealed class HealthCheckFixture : IImage, IAsyncLifetime
   {
-    private readonly IDockerImage image = new DockerImage(string.Empty, Guid.NewGuid().ToString("D"), DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture));
+    private readonly IFutureDockerImage _image = new ImageFromDockerfileBuilder()
+      .WithDockerfileDirectory(Path.Combine(Directory.GetCurrentDirectory(), "Assets", "healthWaitStrategy"))
+      .Build();
 
-    public string Repository => this.image.Repository;
+    public string Repository => _image.Repository;
 
-    public string Name => this.image.Name;
+    public string Name => _image.Name;
 
-    public string Tag => this.image.Tag;
+    public string Tag => _image.Tag;
 
-    public string FullName => this.image.FullName;
+    public string FullName => _image.FullName;
 
     public string GetHostname()
     {
-      return this.image.GetHostname();
+      return _image.GetHostname();
     }
 
     public Task InitializeAsync()
     {
-      return new ImageFromDockerfileBuilder()
-        .WithName(this)
-        .WithDockerfileDirectory(Path.Combine(Directory.GetCurrentDirectory(), "Assets", "healthWaitStrategy"))
-        .WithBuildArgument("RESOURCE_REAPER_SESSION_ID", ResourceReaper.DefaultSessionId.ToString("D"))
-        .Build();
+      return _image.CreateAsync();
     }
 
     public Task DisposeAsync()
     {
-      return Task.CompletedTask;
+      return _image.DeleteAsync();
     }
   }
 }

@@ -14,56 +14,56 @@ namespace DotNet.Testcontainers.Clients
 
   internal sealed class DockerContainerOperations : DockerApiClient, IDockerContainerOperations
   {
-    private readonly ILogger logger;
+    private readonly ILogger _logger;
 
     public DockerContainerOperations(Guid sessionId, IDockerEndpointAuthenticationConfiguration dockerEndpointAuthConfig, ILogger logger)
       : base(sessionId, dockerEndpointAuthConfig)
     {
-      this.logger = logger;
+      _logger = logger;
     }
 
     public async Task<IEnumerable<ContainerListResponse>> GetAllAsync(CancellationToken ct = default)
     {
-      return (await this.Docker.Containers.ListContainersAsync(new ContainersListParameters { All = true }, ct)
+      return (await Docker.Containers.ListContainersAsync(new ContainersListParameters { All = true }, ct)
         .ConfigureAwait(false)).ToArray();
     }
 
     public Task<ContainerListResponse> ByIdAsync(string id, CancellationToken ct = default)
     {
-      return this.ByPropertyAsync("id", id, ct);
+      return ByPropertyAsync("id", id, ct);
     }
 
     public Task<ContainerListResponse> ByNameAsync(string name, CancellationToken ct = default)
     {
-      return this.ByPropertyAsync("name", name, ct);
+      return ByPropertyAsync("name", name, ct);
     }
 
     public async Task<ContainerListResponse> ByPropertyAsync(string property, string value, CancellationToken ct = default)
     {
       var filters = new FilterByProperty { { property, value } };
-      return (await this.Docker.Containers.ListContainersAsync(new ContainersListParameters { All = true, Filters = filters }, ct)
+      return (await Docker.Containers.ListContainersAsync(new ContainersListParameters { All = true, Filters = filters }, ct)
         .ConfigureAwait(false)).FirstOrDefault();
     }
 
     public async Task<bool> ExistsWithIdAsync(string id, CancellationToken ct = default)
     {
-      return await this.ByIdAsync(id, ct)
+      return await ByIdAsync(id, ct)
         .ConfigureAwait(false) != null;
     }
 
     public async Task<bool> ExistsWithNameAsync(string name, CancellationToken ct = default)
     {
-      return await this.ByNameAsync(name, ct)
+      return await ByNameAsync(name, ct)
         .ConfigureAwait(false) != null;
     }
 
-    public async Task<long> GetExitCode(string id, CancellationToken ct = default)
+    public async Task<long> GetExitCodeAsync(string id, CancellationToken ct = default)
     {
-      return (await this.Docker.Containers.WaitContainerAsync(id, ct)
+      return (await Docker.Containers.WaitContainerAsync(id, ct)
         .ConfigureAwait(false)).StatusCode;
     }
 
-    public async Task<(string Stdout, string Stderr)> GetLogs(string id, TimeSpan since, TimeSpan until, CancellationToken ct = default)
+    public async Task<(string Stdout, string Stderr)> GetLogsAsync(string id, TimeSpan since, TimeSpan until, bool timestampsEnabled = true, CancellationToken ct = default)
     {
       var logsParameters = new ContainerLogsParameters
       {
@@ -71,10 +71,10 @@ namespace DotNet.Testcontainers.Clients
         ShowStderr = true,
         Since = since.TotalSeconds.ToString("0", CultureInfo.InvariantCulture),
         Until = until.TotalSeconds.ToString("0", CultureInfo.InvariantCulture),
-        Timestamps = true,
+        Timestamps = timestampsEnabled,
       };
 
-      using (var stdOutAndErrStream = await this.Docker.Containers.GetContainerLogsAsync(id, false, logsParameters, ct)
+      using (var stdOutAndErrStream = await Docker.Containers.GetContainerLogsAsync(id, false, logsParameters, ct)
         .ConfigureAwait(false))
       {
         return await stdOutAndErrStream.ReadOutputToEndAsync(ct)
@@ -84,33 +84,33 @@ namespace DotNet.Testcontainers.Clients
 
     public Task StartAsync(string id, CancellationToken ct = default)
     {
-      this.logger.StartDockerContainer(id);
-      return this.Docker.Containers.StartContainerAsync(id, new ContainerStartParameters(), ct);
+      _logger.StartDockerContainer(id);
+      return Docker.Containers.StartContainerAsync(id, new ContainerStartParameters(), ct);
     }
 
     public Task StopAsync(string id, CancellationToken ct = default)
     {
-      this.logger.StopDockerContainer(id);
-      return this.Docker.Containers.StopContainerAsync(id, new ContainerStopParameters { WaitBeforeKillSeconds = 15 }, ct);
+      _logger.StopDockerContainer(id);
+      return Docker.Containers.StopContainerAsync(id, new ContainerStopParameters { WaitBeforeKillSeconds = 15 }, ct);
     }
 
     public Task RemoveAsync(string id, CancellationToken ct = default)
     {
-      this.logger.DeleteDockerContainer(id);
-      return this.Docker.Containers.RemoveContainerAsync(id, new ContainerRemoveParameters { Force = true, RemoveVolumes = true }, ct);
+      _logger.DeleteDockerContainer(id);
+      return Docker.Containers.RemoveContainerAsync(id, new ContainerRemoveParameters { Force = true, RemoveVolumes = true }, ct);
     }
 
     public Task ExtractArchiveToContainerAsync(string id, string path, Stream tarStream, CancellationToken ct = default)
     {
-      this.logger.ExtractArchiveToDockerContainer(id, path);
-      return this.Docker.Containers.ExtractArchiveToContainerAsync(id, new ContainerPathStatParameters { Path = path, AllowOverwriteDirWithFile = false }, tarStream, ct);
+      _logger.CopyArchiveToDockerContainer(id, path);
+      return Docker.Containers.ExtractArchiveToContainerAsync(id, new ContainerPathStatParameters { Path = path, AllowOverwriteDirWithFile = false }, tarStream, ct);
     }
 
     public async Task<Stream> GetArchiveFromContainerAsync(string id, string path, CancellationToken ct = default)
     {
-      this.logger.GetArchiveFromDockerContainer(id, path);
+      _logger.ReadArchiveFromDockerContainer(id, path);
 
-      var tarResponse = await this.Docker.Containers.GetArchiveFromContainerAsync(id, new GetArchiveFromContainerParameters { Path = path }, false, ct)
+      var tarResponse = await Docker.Containers.GetArchiveFromContainerAsync(id, new GetArchiveFromContainerParameters { Path = path }, false, ct)
         .ConfigureAwait(false);
 
       return tarResponse.Stream;
@@ -123,7 +123,7 @@ namespace DotNet.Testcontainers.Clients
         return;
       }
 
-      this.logger.AttachToDockerContainer(id, outputConsumer.GetType());
+      _logger.AttachToDockerContainer(id, outputConsumer.GetType());
 
       var attachParameters = new ContainerAttachParameters
       {
@@ -132,7 +132,7 @@ namespace DotNet.Testcontainers.Clients
         Stream = true,
       };
 
-      var stream = await this.Docker.Containers.AttachContainerAsync(id, false, attachParameters, ct)
+      var stream = await Docker.Containers.AttachContainerAsync(id, false, attachParameters, ct)
         .ConfigureAwait(false);
 
       _ = stream.CopyOutputToAsync(Stream.Null, outputConsumer.Stdout, outputConsumer.Stderr, ct)
@@ -141,7 +141,7 @@ namespace DotNet.Testcontainers.Clients
 
     public async Task<ExecResult> ExecAsync(string id, IList<string> command, CancellationToken ct = default)
     {
-      this.logger.ExecuteCommandInDockerContainer(id, command);
+      _logger.ExecuteCommandInDockerContainer(id, command);
 
       var execCreateParameters = new ContainerExecCreateParameters
       {
@@ -150,30 +150,31 @@ namespace DotNet.Testcontainers.Clients
         AttachStderr = true,
       };
 
-      var execCreateResponse = await this.Docker.Exec.ExecCreateContainerAsync(id, execCreateParameters, ct)
+      var execCreateResponse = await Docker.Exec.ExecCreateContainerAsync(id, execCreateParameters, ct)
         .ConfigureAwait(false);
 
-      using (var stdOutAndErrStream = await this.Docker.Exec.StartAndAttachContainerExecAsync(execCreateResponse.ID, false, ct)
+      using (var stdOutAndErrStream = await Docker.Exec.StartAndAttachContainerExecAsync(execCreateResponse.ID, false, ct)
         .ConfigureAwait(false))
       {
         var (stdout, stderr) = await stdOutAndErrStream.ReadOutputToEndAsync(ct)
           .ConfigureAwait(false);
 
-        var execInspectResponse = await this.Docker.Exec.InspectContainerExecAsync(execCreateResponse.ID, ct)
+        var execInspectResponse = await Docker.Exec.InspectContainerExecAsync(execCreateResponse.ID, ct)
           .ConfigureAwait(false);
 
         return new ExecResult(stdout, stderr, execInspectResponse.ExitCode);
       }
     }
 
-    public async Task<string> RunAsync(ITestcontainersConfiguration configuration, CancellationToken ct = default)
+    public async Task<string> RunAsync(IContainerConfiguration configuration, CancellationToken ct = default)
     {
-      var converter = new TestcontainersConfigurationConverter(configuration);
+      var converter = new ContainerConfigurationConverter(configuration);
 
       var hostConfig = new HostConfig
       {
         AutoRemove = configuration.AutoRemove.HasValue && configuration.AutoRemove.Value,
         Privileged = configuration.Privileged.HasValue && configuration.Privileged.Value,
+        ExtraHosts = converter.ExtraHosts,
         PortBindings = converter.PortBindings,
         Mounts = converter.Mounts,
       };
@@ -207,17 +208,16 @@ namespace DotNet.Testcontainers.Clients
         }
       }
 
-      var id = (await this.Docker.Containers.CreateContainerAsync(createParameters, ct)
-        .ConfigureAwait(false)).ID;
+      var createContainerResponse = await Docker.Containers.CreateContainerAsync(createParameters, ct)
+        .ConfigureAwait(false);
 
-      this.logger.DockerContainerCreated(id);
-
-      return id;
+      _logger.DockerContainerCreated(createContainerResponse.ID);
+      return createContainerResponse.ID;
     }
 
     public Task<ContainerInspectResponse> InspectAsync(string id, CancellationToken ct = default)
     {
-      return this.Docker.Containers.InspectContainerAsync(id, ct);
+      return Docker.Containers.InspectContainerAsync(id, ct);
     }
   }
 }

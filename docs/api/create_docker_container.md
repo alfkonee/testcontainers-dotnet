@@ -1,6 +1,6 @@
 # Creating a container
 
-Testcontainers' generic container support offers the greatest flexibility and makes it easy to use virtually any container image in the context of a temporary test environment. To interact or exchange data with a container, Testcontainers provides  `TestcontainersBuilder<TDockerContainer>` to configure and create the resource.
+Testcontainers' generic container support offers the greatest flexibility and makes it easy to use virtually any container image in the context of a temporary test environment. To interact or exchange data with a container, Testcontainers provides `ContainerBuilder` to configure and create the resource.
 
 ## Configure container start
 
@@ -9,9 +9,9 @@ Both `ENTRYPOINT` and `CMD` allows you to configure an executable and parameters
 Instead of running the NGINX application, the following container configuration overrides the default start procedure of the image and just tests the NGINX configuration file.
 
 ```csharp
-_ = new TestcontainersBuilder<TestcontainersContainer>()
+_ = new ContainerBuilder()
   .WithEntrypoint("nginx")
-  .WithCommand("-t")
+  .WithCommand("-t");
 ```
 
 ## Configure container app or service
@@ -25,14 +25,35 @@ Apps or services running inside a container are usually configured either with e
 To configure an ASP.NET Core application, either one or both mechanisms can be used.
 
 ```csharp
-_ = new TestcontainersBuilder<TestcontainersContainer>()
+_ = new ContainerBuilder()
   .WithEnvironment("ASPNETCORE_URLS", "https://+")
   .WithEnvironment("ASPNETCORE_Kestrel__Certificates__Default__Path", "/app/certificate.crt")
   .WithEnvironment("ASPNETCORE_Kestrel__Certificates__Default__Password", "password")
-  .WithResourceMapping("certificate.crt", "/app/certificate.crt")
+  .WithResourceMapping("certificate.crt", "/app/");
 ```
 
 `WithBindMount(string, string)` is another option to provide access to directories or files. It mounts a host directory or file into the container. Note, this does not follow our best practices. Host paths differ between environments and may not be available on every system or Docker setup, e.g. CI.
+
+## Copying directories or files to the container
+
+Sometimes it is necessary to copy files into the container to configure the services running inside the container in advance, like the `appsettings.json` or an SSL certificate. The container builder API provides a member `WithResourceMapping(string, string)`, including several overloads to copy directories or individual files to a container's directory.
+
+```csharp title="Copying a directory"
+_ = new ContainerBuilder()
+  .WithResourceMapping(new DirectoryInfo("."), "/app/");
+```
+
+```csharp title="Copying a file"
+_ = new ContainerBuilder()
+  .WithResourceMapping(new FileInfo("appsettings.json"), "/app/");
+```
+
+Another overloaded member of the container builder API allows you to copy the contents of a byte array to a specific file path within the container. This can be useful when you already have the file content stored in memory or when you need to dynamically generate the file content before copying it.
+
+```csharp title="Copying a byte array"
+_ = new ContainerBuilder()
+  .WithResourceMapping(Encoding.Default.GetBytes("{}"), "/app/appsettings.json");
+```
 
 ## Examples
 
@@ -41,7 +62,7 @@ An NGINX container that binds the HTTP port to a random host port and hosts stat
 ```csharp
 const ushort HttpPort = 80;
 
-var nginxContainer = new TestcontainersBuilder<TestcontainersContainer>()
+var nginxContainer = new ContainerBuilder()
   .WithName(Guid.NewGuid().ToString("D"))
   .WithImage("nginx")
   .WithPortBinding(HttpPort, true)
@@ -66,7 +87,7 @@ const string MagicNumber = "42";
 
 const ushort MagicNumberPort = 80;
 
-var deepThoughtContainer = new TestcontainersBuilder<TestcontainersContainer>()
+var deepThoughtContainer = new ContainerBuilder()
   .WithName(Guid.NewGuid().ToString("D"))
   .WithImage("alpine")
   .WithExposedPort(MagicNumberPort)
@@ -94,36 +115,36 @@ Assert.Equal(MagicNumber, magicNumber);
 
 ## Supported commands
 
-| Builder method                          | Description                                                                                                                            |
-|-----------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
-| `WithDockerEndpoint`                    | Sets the Docker daemon socket to connect to.                                                                                           |
-| `WithAutoRemove`                        | Will remove the stopped container automatically, similar to `--rm`.                                                                    |
-| `WithCleanUp`                           | Will remove the container automatically after all tests have been run.                                                                 |
-| `WithLabel`                             | Applies metadata to the container e.g. `-l`, `--label "testcontainers=awesome"`.                                                       |
-| `WithResourceReaperSessionId`           | Assigns a Resource Reaper session id to the container. The assigned Resource Reaper takes care of the cleanup.                         |
-| `WithRegistryAuthentication`            | Sets the basic authentication credentials for accessing a private Docker registry.                                                     |
-| `WithImage`                             | Specifies an image for which to create the container.                                                                                  |
-| `WithImagePullPolicy`                   | Specifies an image pull policy to determine when an image is pulled e.g. <code>--pull "always" &vert; "missing" &vert; "never"</code>. |
-| `WithName`                              | Sets the container name e.g. `--name "testcontainers"`.                                                                                |
-| `WithHostname`                          | Sets the container hostname e.g. `--hostname "testcontainers"`.                                                                        |
-| `WithMacAddress`                        | Sets the container MAC address e.g. `--mac-address "00:80:41:ae:fd:7e"`.                                                               |
-| `WithWorkingDirectory`                  | Specifies or overrides the `WORKDIR` for the instruction sets.                                                                         |
-| `WithEntrypoint`                        | Specifies or overrides the `ENTRYPOINT` that runs the executable.                                                                      |
-| `WithCommand`                           | Specifies or overrides the `COMMAND` instruction provided in the Dockerfile.                                                           |
-| `WithEnvironment`                       | Sets an environment variable in the container e.g. `-e`, `--env "MAGIC_NUMBER=42"`.                                                    |
-| `WithExposedPort`                       | Exposes a port inside the container e.g. `--expose "80"`.                                                                              |
-| `WithPortBinding`                       | Publishes a container port to the host e.g. `-p`, `--publish "80:80"`.                                                                 |
-| `WithResourceMapping`                   | Copies a file or any binary content into the created container even before it is started.                                              |
-| `WithBindMount`                         | Binds a path of a file or directory into the container e.g. `-v`, `--volume ".:/tmp"`.                                                 |
-| `WithVolumeMount`                       | Mounts a managed volume into the container e.g. `--mount "type=volume,source=my-vol,destination=/tmp"`.                                |
-| `WithTmpfsMount`                        | Mounts a temporary volume into the container e.g. `--mount "type=tmpfs,destination=/tmp"`.                                             |
-| `WithNetwork`                           | Assigns a network to the container e.g. `--network "bridge"`.                                                                          |
-| `WithNetworkAliases`                    | Assigns a network-scoped aliases to the container e.g. `--network-alias "alias"`.                                                      |
-| `WithPrivileged`                        | Sets the `--privileged` flag.                                                                                                          |
-| `WithCreateContainerParametersModifier` | Allows low level modifications of the Docker container create parameter.                                                               |
-| `WithOutputConsumer`                    | Redirects `stdout` and `stderr` to capture the container output.                                                                       |
-| `WithWaitStrategy`                      | Sets the wait strategy to complete the container start and indicates when it is ready.                                                 |
-| `WithStartupCallback`                   | Sets the startup callback to invoke after the container start.                                                                         |
+| Builder method                | Description                                                                                                                                                                          |
+|-------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `DependsOn`                   | Sets the dependent resource to resolve and create or start before starting this container configuration.                                                                             |
+| `WithDockerEndpoint`          | Sets the Docker daemon socket to connect to.                                                                                                                                         |
+| `WithAutoRemove`              | Will remove the stopped container automatically, similar to `--rm`.                                                                                                                  |
+| `WithCleanUp`                 | Will remove the container automatically after all tests have been run.                                                                                                               |
+| `WithLabel`                   | Applies metadata to the container e.g. `-l`, `--label "testcontainers=awesome"`.                                                                                                     |
+| `WithImage`                   | Specifies an image for which to create the container.                                                                                                                                |
+| `WithImagePullPolicy`         | Specifies an image pull policy to determine when an image is pulled e.g. <code>--pull "always" &vert; "missing" &vert; "never"</code>.                                               |
+| `WithName`                    | Sets the container name e.g. `--name "testcontainers"`.                                                                                                                              |
+| `WithHostname`                | Sets the container hostname e.g. `--hostname "testcontainers"`.                                                                                                                      |
+| `WithMacAddress`              | Sets the container MAC address e.g. `--mac-address "00:80:41:ae:fd:7e"`.                                                                                                             |
+| `WithWorkingDirectory`        | Specifies or overrides the `WORKDIR` for the instruction sets.                                                                                                                       |
+| `WithEntrypoint`              | Specifies or overrides the `ENTRYPOINT` that runs the executable.                                                                                                                    |
+| `WithCommand`                 | Specifies or overrides the `COMMAND` instruction provided in the Dockerfile.                                                                                                         |
+| `WithEnvironment`             | Sets an environment variable in the container e.g. `-e`, `--env "MAGIC_NUMBER=42"`.                                                                                                  |
+| `WithExposedPort`             | Exposes a port inside the container e.g. `--expose "80"`.                                                                                                                            |
+| `WithPortBinding`             | Publishes a container port to the host e.g. `-p`, `--publish "80:80"`.                                                                                                               |
+| `WithResourceMapping`         | Copies a file or any binary content into the created container even before it is started.                                                                                            |
+| `WithBindMount`               | Binds a path of a file or directory into the container e.g. `-v`, `--volume ".:/tmp"`.                                                                                               |
+| `WithVolumeMount`             | Mounts a managed volume into the container e.g. `--mount "type=volume,source=my-vol,destination=/tmp"`.                                                                              |
+| `WithTmpfsMount`              | Mounts a temporary volume into the container e.g. `--mount "type=tmpfs,destination=/tmp"`.                                                                                           |
+| `WithNetwork`                 | Assigns a network to the container e.g. `--network "bridge"`.                                                                                                                        |
+| `WithNetworkAliases`          | Assigns a network-scoped aliases to the container e.g. `--network-alias "alias"`.                                                                                                    |
+| `WithExtraHost`               | Adds a custom host-to-IP mapping to the container's `/etc/hosts` respectively `%WINDIR%\\system32\\drivers\\etc\\hosts` e.g. `--add-host "host.testcontainers.internal:172.17.0.2"`. |
+| `WithPrivileged`              | Sets the `--privileged` flag.                                                                                                                                                        |
+| `WithOutputConsumer`          | Redirects `stdout` and `stderr` to capture the container output.                                                                                                                     |
+| `WithWaitStrategy`            | Sets the wait strategy to complete the container start and indicates when it is ready.                                                                                               |
+| `WithStartupCallback`         | Sets the startup callback to invoke after the container start.                                                                                                                       |
+| `WithCreateParameterModifier` | Allows low level modifications of the Docker container create parameter.                                                                                                             |
 
 !!!tip
 

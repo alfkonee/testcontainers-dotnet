@@ -1,4 +1,4 @@
-﻿namespace DotNet.Testcontainers.Tests.Unit
+namespace DotNet.Testcontainers.Tests.Unit
 {
   using System;
   using System.Collections.Generic;
@@ -38,7 +38,7 @@
         TestcontainersSettings.HubImageNamePrefix = hubImageNamePrefix;
 
         // When
-        IDockerContainer container = new TestcontainersBuilder<TestcontainersContainer>()
+        IContainer container = new ContainerBuilder()
           .WithImage(imageName)
           .Build();
 
@@ -53,10 +53,10 @@
         // Given
         TestcontainersSettings.HubImageNamePrefix = hubImageNamePrefix;
 
-        IDockerImage image = new DockerImage(imageName);
+        IImage image = new DockerImage(imageName);
 
         // When
-        IDockerContainer container = new TestcontainersBuilder<TestcontainersContainer>()
+        IContainer container = new ContainerBuilder()
           .WithImage(image)
           .Build();
 
@@ -85,7 +85,7 @@
         const string imageName = "bar:latest";
 
         // When
-        IDockerContainer container = new TestcontainersBuilder<TestcontainersContainer>()
+        IContainer container = new ContainerBuilder()
           .WithImage(imageName)
           .Build();
 
@@ -99,10 +99,10 @@
         // Given
         const string imageName = "bar:latest";
 
-        IDockerImage image = new DockerImage(imageName);
+        IImage image = new DockerImage(imageName);
 
         // When
-        IDockerContainer container = new TestcontainersBuilder<TestcontainersContainer>()
+        IContainer container = new ContainerBuilder()
           .WithImage(image)
           .Build();
 

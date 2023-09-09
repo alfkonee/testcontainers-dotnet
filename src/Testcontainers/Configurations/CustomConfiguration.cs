@@ -7,36 +7,36 @@ namespace DotNet.Testcontainers.Configurations
 
   internal abstract class CustomConfiguration
   {
-    private readonly IReadOnlyDictionary<string, string> properties;
+    private readonly IReadOnlyDictionary<string, string> _properties;
 
     protected CustomConfiguration(IReadOnlyDictionary<string, string> properties)
     {
-      this.properties = properties;
+      _properties = properties;
     }
 
-    protected string GetDockerConfig(string propertyName)
+    protected virtual string GetDockerConfig(string propertyName)
     {
-      return this.GetPropertyValue(propertyName);
+      return GetPropertyValue<string>(propertyName);
     }
 
-    protected Uri GetDockerHost(string propertyName)
+    protected virtual Uri GetDockerHost(string propertyName)
     {
-      return this.properties.TryGetValue(propertyName, out var propertyValue) && Uri.TryCreate(propertyValue, UriKind.RelativeOrAbsolute, out var dockerHost) ? dockerHost : null;
+      return _properties.TryGetValue(propertyName, out var propertyValue) && Uri.TryCreate(propertyValue, UriKind.RelativeOrAbsolute, out var dockerHost) ? dockerHost : null;
     }
 
-    protected string GetDockerHostOverride(string propertyName)
+    protected virtual string GetDockerHostOverride(string propertyName)
     {
-      return this.GetPropertyValue(propertyName);
+      return GetPropertyValue<string>(propertyName);
     }
 
-    protected string GetDockerSocketOverride(string propertyName)
+    protected virtual string GetDockerSocketOverride(string propertyName)
     {
-      return this.GetPropertyValue(propertyName);
+      return GetPropertyValue<string>(propertyName);
     }
 
-    protected JsonDocument GetDockerAuthConfig(string propertyName)
+    protected virtual JsonDocument GetDockerAuthConfig(string propertyName)
     {
-      _ = this.properties.TryGetValue(propertyName, out var propertyValue);
+      _ = _properties.TryGetValue(propertyName, out var propertyValue);
 
       if (string.IsNullOrEmpty(propertyValue))
       {
@@ -53,31 +53,34 @@ namespace DotNet.Testcontainers.Configurations
       }
     }
 
-    protected string GetDockerCertPath(string propertyName)
+    protected virtual string GetDockerCertPath(string propertyName)
     {
-      return this.GetPropertyValue(propertyName);
+      return GetPropertyValue<string>(propertyName);
     }
 
-    protected bool GetDockerTls(string propertyName)
+    protected virtual bool GetDockerTls(string propertyName)
     {
-      _ = this.properties.TryGetValue(propertyName, out var propertyValue);
-      return "1".Equals(propertyValue, StringComparison.Ordinal) || (bool.TryParse(propertyValue, out var tlsEnabled) && tlsEnabled);
+      return GetPropertyValue<bool>(propertyName);
     }
 
-    protected bool GetDockerTlsVerify(string propertyName)
+    protected virtual bool GetDockerTlsVerify(string propertyName)
     {
-      _ = this.properties.TryGetValue(propertyName, out var propertyValue);
-      return "1".Equals(propertyValue, StringComparison.Ordinal) || (bool.TryParse(propertyValue, out var tlsVerifyEnabled) && tlsVerifyEnabled);
+      return GetPropertyValue<bool>(propertyName);
     }
 
-    protected bool GetRyukDisabled(string propertyName)
+    protected virtual bool GetRyukDisabled(string propertyName)
     {
-      return this.properties.TryGetValue(propertyName, out var propertyValue) && bool.TryParse(propertyValue, out var ryukDisabled) && ryukDisabled;
+      return GetPropertyValue<bool>(propertyName);
     }
 
-    protected IDockerImage GetRyukContainerImage(string propertyName)
+    protected virtual bool GetRyukContainerPrivileged(string propertyName)
     {
-      _ = this.properties.TryGetValue(propertyName, out var propertyValue);
+      return GetPropertyValue<bool>(propertyName);
+    }
+
+    protected virtual IImage GetRyukContainerImage(string propertyName)
+    {
+      _ = _properties.TryGetValue(propertyName, out var propertyValue);
 
       if (string.IsNullOrEmpty(propertyValue))
       {
@@ -94,15 +97,29 @@ namespace DotNet.Testcontainers.Configurations
       }
     }
 
-    protected string GetHubImageNamePrefix(string propertyName)
+    protected virtual string GetHubImageNamePrefix(string propertyName)
     {
-      return this.GetPropertyValue(propertyName);
+      return GetPropertyValue<string>(propertyName);
     }
 
-    private string GetPropertyValue(string propertyName)
+    private T GetPropertyValue<T>(string propertyName)
     {
-      _ = this.properties.TryGetValue(propertyName, out var propertyValue);
-      return propertyValue;
+      switch (Type.GetTypeCode(typeof(T)))
+      {
+        case TypeCode.Boolean:
+        {
+          return (T)(object)(_properties.TryGetValue(propertyName, out var propertyValue) && ("1".Equals(propertyValue, StringComparison.Ordinal) || (bool.TryParse(propertyValue, out var result) && result)));
+        }
+
+        case TypeCode.String:
+        {
+          _ = _properties.TryGetValue(propertyName, out var propertyValue);
+          return (T)(object)propertyValue;
+        }
+
+        default:
+          throw new ArgumentOutOfRangeException(typeof(T).Name);
+      }
     }
   }
 }

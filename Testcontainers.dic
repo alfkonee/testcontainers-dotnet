@@ -6,11 +6,13 @@ creds
 dind
 dvcm
 enumerables
+fmpeg
 ghcr
 httpd
 identitytoken
 initdb
 isready
+kubeconfig
 lipsum
 ltsc
 memopt
@@ -24,9 +26,12 @@ npipe
 postgre
 ramsize
 rebalance
+redpanda
 ryuk
 servercore
 sqlplus
 testcontainer
 testcontainers
 tlsverify
+toml
+vstest

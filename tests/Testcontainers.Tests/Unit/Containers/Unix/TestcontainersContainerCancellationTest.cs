@@ -1,4 +1,4 @@
-namespace DotNet.Testcontainers.Tests.Unit.Containers.Unix
+namespace DotNet.Testcontainers.Tests.Unit
 {
   using System;
   using System.IO;
@@ -11,24 +11,27 @@ namespace DotNet.Testcontainers.Tests.Unit.Containers.Unix
   {
     public sealed class Cancel : IClassFixture<AlpineFixture>
     {
-      private readonly AlpineFixture alpineFixture;
+      private readonly AlpineFixture _alpineFixture;
 
       public Cancel(AlpineFixture alpineFixture)
       {
-        this.alpineFixture = alpineFixture;
+        _alpineFixture = alpineFixture;
       }
 
       [Fact]
       public async Task Start()
       {
-        using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15)))
-        {
-          var expectedExceptions = new[] { typeof(TaskCanceledException), typeof(OperationCanceledException), typeof(TimeoutException), typeof(IOException) };
+        // Given
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
 
-          // It depends which part in the StartAsync gets canceled. Catch base exception.
-          var exception = await Assert.ThrowsAnyAsync<SystemException>(() => this.alpineFixture.Container.StartAsync(cts.Token));
-          Assert.Contains(exception.GetType(), expectedExceptions);
-        }
+        var expectedExceptions = new[] { typeof(TaskCanceledException), typeof(OperationCanceledException), typeof(TimeoutException), typeof(IOException) };
+
+        // When
+        var exception = await Assert.ThrowsAnyAsync<SystemException>(() => _alpineFixture.Container.StartAsync(cts.Token))
+          .ConfigureAwait(false);
+
+        // Then
+        Assert.Contains(exception.GetType(), expectedExceptions);
       }
     }
   }

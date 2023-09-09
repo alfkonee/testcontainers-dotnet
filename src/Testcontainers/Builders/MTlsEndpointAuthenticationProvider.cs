@@ -6,13 +6,16 @@ namespace DotNet.Testcontainers.Builders
   using System.Security.Cryptography.X509Certificates;
   using Docker.DotNet.X509;
   using DotNet.Testcontainers.Configurations;
+  using JetBrains.Annotations;
   using Org.BouncyCastle.Crypto;
+  using Org.BouncyCastle.Crypto.Parameters;
   using Org.BouncyCastle.OpenSsl;
   using Org.BouncyCastle.Pkcs;
   using Org.BouncyCastle.Security;
   using Org.BouncyCastle.X509;
 
   /// <inheritdoc cref="IDockerRegistryAuthenticationProvider" />
+  [PublicAPI]
   internal sealed class MTlsEndpointAuthenticationProvider : TlsEndpointAuthenticationProvider
   {
     private static readonly X509CertificateParser CertificateParser = new X509CertificateParser();
@@ -21,7 +24,7 @@ namespace DotNet.Testcontainers.Builders
     /// Initializes a new instance of the <see cref="MTlsEndpointAuthenticationProvider" /> class.
     /// </summary>
     public MTlsEndpointAuthenticationProvider()
-      : this(PropertiesFileConfiguration.Instance, EnvironmentConfiguration.Instance)
+      : this(EnvironmentConfiguration.Instance, PropertiesFileConfiguration.Instance)
     {
     }
 
@@ -38,22 +41,22 @@ namespace DotNet.Testcontainers.Builders
     public override bool IsApplicable()
     {
       var certificatesFiles = new[] { ClientCertificateFileName, ClientCertificateKeyFileName };
-      return this.TlsEnabled && this.TlsVerifyEnabled && certificatesFiles.Select(fileName => Path.Combine(this.CertificatesDirectoryPath, fileName)).All(File.Exists);
+      return TlsEnabled && TlsVerifyEnabled && certificatesFiles.Select(fileName => Path.Combine(CertificatesDirectoryPath, fileName)).All(File.Exists);
     }
 
     /// <inheritdoc />
     public override IDockerEndpointAuthenticationConfiguration GetAuthConfig()
     {
-      var credentials = new CertificateCredentials(this.GetClientCertificate());
-      credentials.ServerCertificateValidationCallback = this.ServerCertificateValidationCallback;
-      return new DockerEndpointAuthenticationConfiguration(this.DockerEngine, credentials);
+      var credentials = new CertificateCredentials(GetClientCertificate());
+      credentials.ServerCertificateValidationCallback = ServerCertificateValidationCallback;
+      return new DockerEndpointAuthenticationConfiguration(DockerEngine, credentials);
     }
 
     /// <inheritdoc />
     protected override X509Certificate2 GetClientCertificate()
     {
-      var clientCertificateFilePath = Path.Combine(this.CertificatesDirectoryPath, ClientCertificateFileName);
-      var clientCertificateKeyFilePath = Path.Combine(this.CertificatesDirectoryPath, ClientCertificateKeyFileName);
+      var clientCertificateFilePath = Path.Combine(CertificatesDirectoryPath, ClientCertificateFileName);
+      var clientCertificateKeyFilePath = Path.Combine(CertificatesDirectoryPath, ClientCertificateKeyFileName);
       return CreateFromPemFile(clientCertificateFilePath, clientCertificateKeyFilePath);
     }
 
@@ -77,11 +80,13 @@ namespace DotNet.Testcontainers.Builders
 
         var password = Guid.NewGuid().ToString("D");
 
-        var keyPair = (AsymmetricCipherKeyPair)new PemReader(keyPairStream).ReadObject();
+        var keyObject = new PemReader(keyPairStream).ReadObject();
 
         var certificateEntry = new X509CertificateEntry(certificate);
 
-        var keyEntry = new AsymmetricKeyEntry(keyPair.Private);
+        var keyParameter = ResolveKeyParameter(keyObject);
+
+        var keyEntry = new AsymmetricKeyEntry(keyParameter);
         store.SetKeyEntry(certificate.SubjectDN + "_key", keyEntry, new[] { certificateEntry });
 
         using (var certificateStream = new MemoryStream())
@@ -89,6 +94,19 @@ namespace DotNet.Testcontainers.Builders
           store.Save(certificateStream, password.ToCharArray(), new SecureRandom());
           return new X509Certificate2(Pkcs12Utilities.ConvertToDefiniteLength(certificateStream.ToArray()), password);
         }
+      }
+    }
+
+    private static AsymmetricKeyParameter ResolveKeyParameter(object keyObject)
+    {
+      switch (keyObject)
+      {
+        case AsymmetricCipherKeyPair ackp:
+          return ackp.Private;
+        case RsaPrivateCrtKeyParameters rpckp:
+          return rpckp;
+        default:
+          throw new ArgumentOutOfRangeException(nameof(keyObject), $"Unsupported asymmetric key entry encountered while trying to resolve key from input object '{keyObject.GetType()}'.");
       }
     }
   }

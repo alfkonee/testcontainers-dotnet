@@ -1,4 +1,6 @@
+Dockerfile
 credHelpers
 credsStore
 healthWaitStrategy
+pullBaseImages
 **/*.md

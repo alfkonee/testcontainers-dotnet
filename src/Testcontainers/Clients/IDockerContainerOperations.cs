@@ -11,9 +11,9 @@ namespace DotNet.Testcontainers.Clients
 
   internal interface IDockerContainerOperations : IHasListOperations<ContainerListResponse>
   {
-    Task<long> GetExitCode(string id, CancellationToken ct = default);
+    Task<long> GetExitCodeAsync(string id, CancellationToken ct = default);
 
-    Task<(string Stdout, string Stderr)> GetLogs(string id, TimeSpan since, TimeSpan until, CancellationToken ct = default);
+    Task<(string Stdout, string Stderr)> GetLogsAsync(string id, TimeSpan since, TimeSpan until, bool timestampsEnabled = true, CancellationToken ct = default);
 
     Task StartAsync(string id, CancellationToken ct = default);
 
@@ -29,7 +29,7 @@ namespace DotNet.Testcontainers.Clients
 
     Task<ExecResult> ExecAsync(string id, IList<string> command, CancellationToken ct = default);
 
-    Task<string> RunAsync(ITestcontainersConfiguration configuration, CancellationToken ct = default);
+    Task<string> RunAsync(IContainerConfiguration configuration, CancellationToken ct = default);
 
     Task<ContainerInspectResponse> InspectAsync(string id, CancellationToken ct = default);
   }

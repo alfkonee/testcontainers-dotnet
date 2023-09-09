@@ -11,71 +11,85 @@ namespace DotNet.Testcontainers.Clients
 
   internal sealed class DockerNetworkOperations : DockerApiClient, IDockerNetworkOperations
   {
-    private readonly ILogger logger;
+    private readonly ILogger _logger;
 
     public DockerNetworkOperations(Guid sessionId, IDockerEndpointAuthenticationConfiguration dockerEndpointAuthConfig, ILogger logger)
       : base(sessionId, dockerEndpointAuthConfig)
     {
-      this.logger = logger;
+      _logger = logger;
     }
 
     public async Task<IEnumerable<NetworkResponse>> GetAllAsync(CancellationToken ct = default)
     {
-      return (await this.Docker.Networks.ListNetworksAsync(new NetworksListParameters(), ct)
+      return (await Docker.Networks.ListNetworksAsync(new NetworksListParameters(), ct)
         .ConfigureAwait(false)).ToArray();
     }
 
     public async Task<NetworkResponse> ByIdAsync(string id, CancellationToken ct = default)
     {
-      return (await this.GetAllAsync(ct)
-        .ConfigureAwait(false)).FirstOrDefault(image => image.ID.Equals(id, StringComparison.Ordinal));
+      return (await GetAllAsync(ct)
+        .ConfigureAwait(false)).FirstOrDefault(image => image.ID.Equals(id, StringComparison.OrdinalIgnoreCase));
     }
 
     public Task<NetworkResponse> ByNameAsync(string name, CancellationToken ct = default)
     {
-      return this.ByPropertyAsync("name", name, ct);
+      return ByPropertyAsync("name", name, ct);
     }
 
     public async Task<NetworkResponse> ByPropertyAsync(string property, string value, CancellationToken ct = default)
     {
       var filters = new FilterByProperty { { property, value } };
-      return (await this.Docker.Networks.ListNetworksAsync(new NetworksListParameters { Filters = filters }, ct)
+      return (await Docker.Networks.ListNetworksAsync(new NetworksListParameters { Filters = filters }, ct)
         .ConfigureAwait(false)).FirstOrDefault();
     }
 
     public async Task<bool> ExistsWithIdAsync(string id, CancellationToken ct = default)
     {
-      return await this.ByIdAsync(id, ct)
+      return await ByIdAsync(id, ct)
         .ConfigureAwait(false) != null;
     }
 
     public async Task<bool> ExistsWithNameAsync(string name, CancellationToken ct = default)
     {
-      return await this.ByNameAsync(name, ct)
+      return await ByNameAsync(name, ct)
         .ConfigureAwait(false) != null;
     }
 
-    public async Task<string> CreateAsync(ITestcontainersNetworkConfiguration configuration, CancellationToken ct = default)
+    public async Task<string> CreateAsync(INetworkConfiguration configuration, CancellationToken ct = default)
     {
       var createParameters = new NetworksCreateParameters
       {
         Name = configuration.Name,
         Driver = configuration.Driver.Value,
-        Labels = configuration.Labels.ToDictionary(item => item.Key, item => item.Value),
         Options = configuration.Options.ToDictionary(item => item.Key, item => item.Value),
+        Labels = configuration.Labels.ToDictionary(item => item.Key, item => item.Value),
       };
 
-      var id = (await this.Docker.Networks.CreateNetworkAsync(createParameters, ct)
-        .ConfigureAwait(false)).ID;
+      if (configuration.ParameterModifiers != null)
+      {
+        foreach (var parameterModifier in configuration.ParameterModifiers)
+        {
+          parameterModifier(createParameters);
+        }
+      }
 
-      this.logger.DockerNetworkCreated(id);
-      return id;
+      var createNetworkResponse = await Docker.Networks.CreateNetworkAsync(createParameters, ct)
+        .ConfigureAwait(false);
+
+      _logger.DockerNetworkCreated(createNetworkResponse.ID);
+      return createNetworkResponse.ID;
     }
 
     public Task DeleteAsync(string id, CancellationToken ct = default)
     {
-      this.logger.DeleteDockerNetwork(id);
-      return this.Docker.Networks.DeleteNetworkAsync(id, ct);
+      _logger.DeleteDockerNetwork(id);
+      return Docker.Networks.DeleteNetworkAsync(id, ct);
+    }
+
+    public Task ConnectAsync(string networkId, string containerId, CancellationToken ct = default)
+    {
+      _logger.ConnectToDockerNetwork(networkId, containerId);
+      return Docker.Networks.ConnectNetworkAsync(networkId, new NetworkConnectParameters { Container = containerId }, ct);
     }
   }
 }

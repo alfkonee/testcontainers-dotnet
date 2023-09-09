@@ -8,12 +8,18 @@ namespace DotNet.Testcontainers.Configurations
     /// <summary>
     /// Initializes a new instance of the <see cref="RedirectStdoutAndStderrToNull" /> class.
     /// </summary>
-    public RedirectStdoutAndStderrToNull()
+    private RedirectStdoutAndStderrToNull()
     {
-      this.Enabled = false;
-      this.Stdout = Stream.Null;
-      this.Stderr = Stream.Null;
+      Enabled = false;
+      Stdout = Stream.Null;
+      Stderr = Stream.Null;
     }
+
+    /// <summary>
+    /// Gets the <see cref="IOutputConsumer" /> instance.
+    /// </summary>
+    public static IOutputConsumer Instance { get; }
+      = new RedirectStdoutAndStderrToNull();
 
     /// <inheritdoc />
     public bool Enabled { get; }
@@ -27,8 +33,8 @@ namespace DotNet.Testcontainers.Configurations
     /// <inheritdoc />
     public void Dispose()
     {
-      this.Stdout.Dispose();
-      this.Stderr.Dispose();
+      Stdout.Dispose();
+      Stderr.Dispose();
     }
   }
 }

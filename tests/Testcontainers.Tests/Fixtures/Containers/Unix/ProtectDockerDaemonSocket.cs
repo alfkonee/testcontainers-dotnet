@@ -1,4 +1,4 @@
-﻿namespace DotNet.Testcontainers.Tests.Fixtures
+namespace DotNet.Testcontainers.Tests.Fixtures
 {
   using System;
   using System.Collections.Generic;
@@ -8,33 +8,28 @@
   using DotNet.Testcontainers.Configurations;
   using DotNet.Testcontainers.Containers;
   using DotNet.Testcontainers.Images;
-  using Microsoft.Extensions.Logging;
+  using Org.BouncyCastle.OpenSsl;
   using Xunit;
 
   public abstract class ProtectDockerDaemonSocket : IAsyncLifetime
   {
-    public const string DockerVersion = "20.10.18";
-
     private const string CertsDirectoryName = "certs";
 
     private const ushort TlsPort = 2376;
 
-    private readonly string hostCertsDirectoryPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("D"), CertsDirectoryName);
+    private readonly string _hostCertsDirectoryPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("D"), CertsDirectoryName);
 
-    private readonly string containerCertsDirectoryPath = Path.Combine("/", CertsDirectoryName);
+    private readonly string _containerCertsDirectoryPath = Path.Combine("/", CertsDirectoryName);
 
-    private readonly IDockerImage image = new DockerImage(string.Empty, "docker", DockerVersion + "-dind");
+    private readonly IContainer _container;
 
-    private readonly ITestcontainersContainer container;
-
-    protected ProtectDockerDaemonSocket(ITestcontainersBuilder<TestcontainersContainer> containerConfiguration)
+    protected ProtectDockerDaemonSocket(ContainerBuilder containerConfiguration, string dockerImageVersion)
     {
-      this.container = containerConfiguration
-        .WithImage(this.image)
+      _container = containerConfiguration
+        .WithImage(new DockerImage(string.Empty, "docker", dockerImageVersion + "-dind"))
         .WithPrivileged(true)
-        .WithExposedPort(TlsPort)
         .WithPortBinding(TlsPort, true)
-        .WithBindMount(this.hostCertsDirectoryPath, this.containerCertsDirectoryPath, AccessMode.ReadWrite)
+        .WithBindMount(_hostCertsDirectoryPath, _containerCertsDirectoryPath, AccessMode.ReadWrite)
         .WithWaitStrategy(Wait.ForUnixContainer().AddCustomWaitStrategy(new UntilListenOn()))
         .Build();
     }
@@ -44,37 +39,49 @@
       get
       {
         var customProperties = new List<string>();
-        customProperties.Add($"docker.host={this.TcpEndpoint}");
-        customProperties.Add($"docker.cert.path={Path.Combine(this.hostCertsDirectoryPath, "client")}");
+        customProperties.Add($"docker.host={new UriBuilder("tcp", _container.Hostname, _container.GetMappedPublicPort(TlsPort))}");
+        customProperties.Add($"docker.cert.path={Path.Combine(_hostCertsDirectoryPath, "client")}");
         return customProperties;
       }
     }
 
-    private Uri TcpEndpoint
+    public IImage Image
     {
       get
       {
-        return new UriBuilder("tcp", this.container.Hostname, this.container.GetMappedPublicPort(TlsPort)).Uri;
+        return _container.Image;
+      }
+    }
+
+    public object TlsKey
+    {
+      get
+      {
+        using (var tlsKeyStream = new StreamReader(Path.Combine(_hostCertsDirectoryPath, "client", "key.pem")))
+        {
+          return new PemReader(tlsKeyStream).ReadObject();
+        }
       }
     }
 
     public Task InitializeAsync()
     {
-      _ = Directory.CreateDirectory(this.hostCertsDirectoryPath);
-      return this.container.StartAsync();
+      _ = Directory.CreateDirectory(_hostCertsDirectoryPath);
+      return _container.StartAsync();
     }
 
     public Task DisposeAsync()
     {
-      return this.container.DisposeAsync().AsTask();
+      return _container.DisposeAsync().AsTask();
     }
 
     private sealed class UntilListenOn : IWaitUntil
     {
-      public async Task<bool> Until(ITestcontainersContainer testcontainers, ILogger logger)
+      public async Task<bool> UntilAsync(IContainer container)
       {
-        var (_, stderr) = await testcontainers.GetLogs()
+        var (_, stderr) = await container.GetLogsAsync()
           .ConfigureAwait(false);
+
         return stderr != null && stderr.Contains("API listen on [::]:2376");
       }
     }

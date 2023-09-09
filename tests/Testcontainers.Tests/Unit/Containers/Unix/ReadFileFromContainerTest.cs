@@ -1,19 +1,19 @@
-﻿namespace DotNet.Testcontainers.Tests.Unit.Containers.Unix
+namespace DotNet.Testcontainers.Tests.Unit
 {
   using System;
   using System.IO;
   using System.Text;
   using System.Threading.Tasks;
   using DotNet.Testcontainers.Builders;
+  using DotNet.Testcontainers.Commons;
   using DotNet.Testcontainers.Containers;
-  using DotNet.Testcontainers.Tests.Fixtures;
   using Xunit;
 
   public sealed class ReadFileFromContainerTest : IAsyncLifetime
   {
-    private readonly IDockerContainer container = new TestcontainersBuilder<TestcontainersContainer>()
+    private readonly IContainer _container = new ContainerBuilder()
       .WithImage("alpine")
-      .WithEntrypoint(KeepTestcontainersUpAndRunning.Command)
+      .WithEntrypoint(CommonCommands.SleepInfinity)
       .Build();
 
     [Fact]
@@ -25,10 +25,10 @@
       var dayOfWeek = DateTime.UtcNow.DayOfWeek.ToString();
 
       // When
-      _ = await this.container.ExecAsync(new[] { "/bin/sh", "-c", $"echo {dayOfWeek} > {dayOfWeekFilePath}" })
+      _ = await _container.ExecAsync(new[] { "/bin/sh", "-c", $"echo {dayOfWeek} > {dayOfWeekFilePath}" })
         .ConfigureAwait(false);
 
-      var fileContent = await this.container.ReadFileAsync(dayOfWeekFilePath)
+      var fileContent = await _container.ReadFileAsync(dayOfWeekFilePath)
         .ConfigureAwait(false);
 
       // Then
@@ -38,23 +38,23 @@
     [Fact]
     public Task AccessNotExistingFileThrowsFileNotFoundException()
     {
-      return Assert.ThrowsAsync<FileNotFoundException>(() => this.container.ReadFileAsync("/tmp/fileNotFound"));
+      return Assert.ThrowsAsync<FileNotFoundException>(() => _container.ReadFileAsync("/tmp/fileNotFound"));
     }
 
     [Fact]
     public Task AccessDirectoryThrowsInvalidOperationException()
     {
-      return Assert.ThrowsAsync<InvalidOperationException>(() => this.container.ReadFileAsync("/tmp"));
+      return Assert.ThrowsAsync<InvalidOperationException>(() => _container.ReadFileAsync("/tmp"));
     }
 
     public Task InitializeAsync()
     {
-      return this.container.StartAsync();
+      return _container.StartAsync();
     }
 
     public Task DisposeAsync()
     {
-      return this.container.DisposeAsync().AsTask();
+      return _container.DisposeAsync().AsTask();
     }
   }
 }

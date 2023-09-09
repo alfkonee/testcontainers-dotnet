@@ -1,4 +1,4 @@
-﻿namespace DotNet.Testcontainers.Tests.Fixtures
+namespace DotNet.Testcontainers.Tests.Fixtures
 {
   using System;
   using System.Threading.Tasks;
@@ -11,20 +11,20 @@
   [UsedImplicitly]
   public sealed class NetworkFixture : IAsyncLifetime
   {
-    public IDockerNetwork Network { get; }
-      = new TestcontainersNetworkBuilder()
+    public INetwork Network { get; }
+      = new NetworkBuilder()
         .WithDriver(NetworkDriver.Bridge)
         .WithName(Guid.NewGuid().ToString("D"))
         .Build();
 
     public Task InitializeAsync()
     {
-      return this.Network.CreateAsync();
+      return Network.CreateAsync();
     }
 
     public Task DisposeAsync()
     {
-      return this.Network.DeleteAsync();
+      return Network.DeleteAsync();
     }
   }
 }

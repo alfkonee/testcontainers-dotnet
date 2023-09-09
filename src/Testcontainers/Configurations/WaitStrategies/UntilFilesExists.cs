@@ -3,20 +3,19 @@ namespace DotNet.Testcontainers.Configurations
   using System.IO;
   using System.Threading.Tasks;
   using DotNet.Testcontainers.Containers;
-  using Microsoft.Extensions.Logging;
 
   internal class UntilFilesExists : IWaitUntil
   {
-    private readonly string file;
+    private readonly string _file;
 
     public UntilFilesExists(string file)
     {
-      this.file = file;
+      _file = file;
     }
 
-    public Task<bool> Until(ITestcontainersContainer testcontainers, ILogger logger)
+    public Task<bool> UntilAsync(IContainer container)
     {
-      return Task.FromResult(File.Exists(this.file));
+      return Task.FromResult(File.Exists(_file));
     }
   }
 }
